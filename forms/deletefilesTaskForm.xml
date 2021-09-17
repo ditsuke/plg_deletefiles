@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<form>
+	<fields name="params">
+		<fieldset name="task_params">
+			<field
+				name="timeout"
+				type="number"
+				label="PLG_TASK_DELETEFILES_TIMEOUT_LABEL"
+				default="1"
+				required="true"
+				min="1"
+				step="1"
+				validate="number"
+				filter="int"
+			/>
+			<field
+					name="directory"
+					type="folderlist"
+					label="PLG_TASK_DELETEFILES_DIRECTORY_LABEL"
+					required="true"
+					recursive="true"
+			/>
+			<field
+					name="days"
+					type="number"
+					label="PLG_TASK_DELETEFILES_DAYS_LABEL"
+					required="true"
+					recursive="true"
+			/>
+			<field name="deletedirectories" type="radio" default="" label="PLG_TASK_DELETEFILES_DELETE_DIRECTORIES" description="">
+				<option value="--delete-directories">Yes</option>
+				<option value="">No</option>
+			</field>
+
+			<field name="debugmode" type="radio" default="0" label="PLG_TASK_DELETEFILES_DEBUGMODE" description="">
+				<option value="1">Yes</option>
+				<option value="0">No</option>
+			</field>
+		</fieldset>
+	</fields>
+</form>
