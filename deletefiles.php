@@ -33,7 +33,7 @@ class PlgTaskDeletefiles extends CMSPlugin implements SubscriberInterface
 	 * @since __DEPLOY_VERSION__
 	 */
 	private const TASKS_MAP = [
-		'deletefiles'         => [
+		'deletefiles' => [
 			'langConstPrefix' => 'PLG_TASK_DELETEFILES_TASKS',
 			'call'            => 'deletefiles',
 			'form'            => 'deletefilesTaskForm'
@@ -102,188 +102,14 @@ class PlgTaskDeletefiles extends CMSPlugin implements SubscriberInterface
 		{
 //			$this->{self::TASKS_MAP[$routineId]['call']}();
 
-			initWithParameters($argv);
-
-			if ($debugMode) {
-				error_reporting(E_ALL);
-				error_reporting(-1);
-				ini_set('error_reporting', E_ALL);
-			} else {
-				error_reporting(0);
-			}
+			$this->initWithParameters($argv);
 
 			// Initialize global variables
 			$currentTime = time();
 
 			// Scan and delete
-			deleteOlderItems();
+			$this->deleteOlderItems();
 
-			exit();
-
-			function deleteOlderItems() {
-
-				// Scans the directory for older items and deletes them
-
-				global $directoryPath, $dayCount, $includeDirectories, $currentTime;
-
-				$ignoredItems = ['.', '..'];
-
-				$scan = scandir($directoryPath);
-
-				foreach ($scan as $key => $itemName) {
-
-					if (!in_array($itemName, $ignoredItems)) {
-
-						$itemPath = $directoryPath.$itemName;
-						$isDirectory = is_dir($itemPath);
-
-						if ($includeDirectories || !$isDirectory) {
-
-							$creationTime = filemtime($itemPath);
-
-							$ageInDays = floor(($currentTime - $creationTime) / 60 / 60 / 24 );
-
-							if ($ageInDays >= $dayCount) {
-
-								if ($isDirectory) {
-
-									if (deleteDirectory($itemPath)) {
-										printStr('Deleted directory '.dayCountWithSuffix($ageInDays).' old: '.$itemPath);
-									} else {
-										printStr('Could not delete directory '.dayCountWithSuffix($ageInDays).' old: '.$itemPath);
-									}
-
-								} else {
-
-									if (unlink($itemPath)) {
-										printStr('Deleted file '.dayCountWithSuffix($ageInDays).' old: '.$itemPath);
-									} else {
-										printStr('Could not delete file '.dayCountWithSuffix($ageInDays).' old: '.$itemPath);
-									}
-
-								}
-
-							}
-
-						}
-
-					}
-
-				}
-
-			}
-			function deleteDirectory($directoryPath) {
-
-				// Add directory separator if necessary
-				if (!endsWith($directoryPath, DIRECTORY_SEPARATOR)) {
-					$directoryPath .= DIRECTORY_SEPARATOR;
-				}
-
-				if (is_dir($directoryPath)) {
-
-					$items = scandir($directoryPath);
-
-					foreach ($items as $item) {
-
-						if ($item != '.' && $item != '..') {
-
-							$itemPath = $directoryPath.$item;
-
-							if (is_dir($itemPath) && !is_link($itemPath)) {
-
-								if (!deleteDirectory($itemPath)) {
-
-									return false;
-
-								}
-
-							} else {
-
-								if (!unlink($itemPath)) {
-
-									return false;
-
-								}
-
-							}
-						}
-					}
-
-					rmdir($directoryPath);
-
-					return true;
-
-				} else {
-
-					return false;
-				}
-
-			}
-			function initWithParameters($params) {
-
-				// Initializes global variables from command line parameters
-
-				global $directoryPath, $dayCount, $includeDirectories, $debugMode;
-
-				if (!isset($params)) {
-
-					// No parameters
-					printUsage();
-
-				} else if (count($params) < 3) {
-
-					// Parameter count mismatch
-					printUsage('This script requires at least two parameters. Please specify the directory path followed by the count of days for maximum file age.');
-
-				} else {
-
-					// Get and validate the first parameter as a directory path
-					$directoryPath = $params->directory;
-					if (!endsWith($directoryPath, '/')) {
-						$directoryPath .= DIRECTORY_SEPARATOR;
-					}
-					if (!is_dir($directoryPath)) {
-						printUsage('No directory found at '.$directoryPath.'. Please specify a valid directory path as the first parameter.');
-					}
-
-					// Get and validate the second parameter as an integer
-					if ((string)(int)$params->days != $params->days) {
-						printUsage('The second parameter is invalid. Please specify an integer for the count of days.');
-					}
-					$dayCount = (int)$params->days;
-
-					// Determine parameter value to include directories or not
-					$includeDirectories = false;
-					if ($params->deletedirectories) {
-						if ($params->deletedirectories == '--delete-directories') {
-							$includeDirectories = true;
-						} else {
-							printUsage('Invalid parameter: '.$params[3]);
-						}
-					}
-
-
-					$debugMode = false;
-					$debugMode = $params->debugMode;
-					if ($params->debugMode) {
-						if ($params->debugMode == '1') {
-							$debugMode = true;
-						} else {
-							$debugMode = false;
-						}
-					}
-
-
-				}
-
-			}
-
-		}
-		else
-		{
-			$this->addTaskLog(sprintf('Starting %d timeout', $timeout));
-			sleep($timeout);
-			$this->addTaskLog(sprintf('%d timeout over!', $timeout));
 		}
 
 		$this->taskEnd($event, 0);
@@ -311,75 +137,210 @@ class PlgTaskDeletefiles extends CMSPlugin implements SubscriberInterface
 		}
 	}
 
-	/**
-	 * @return void
-	 *
-	 * @throws Exception
-	 * @since __DEPLOY_VERSION__
-	 */
-	private function stressMemory(): void
+	public function deleteDirectory($directoryPath)
 	{
-		$mLimit = $this->getMemoryLimit();
-		$this->addTaskLog(sprintf('Memory Limit: %d KB', $mLimit));
 
-		$iMem = $cMem = memory_get_usage();
-		$i = 0;
-
-		while ($cMem + ($cMem - $iMem) / ++$i <= $mLimit)
+		// Add directory separator if necessary
+		if (!endsWith($directoryPath, DIRECTORY_SEPARATOR))
 		{
-			$this->addTaskLog(sprintf('Current memory usage: %d KB', $cMem));
-			${"array" . $i} = array_fill(0, 100000, 1);
-		}
-	}
-
-	/**
-	 *
-	 * @return void
-	 *
-	 * @throws Exception
-	 * @since __DEPLOY_VERSION__
-	 */
-	private function stressMemoryRemoveLimit(): void
-	{
-		$success = false;
-
-		if (function_exists('ini_set'))
-		{
-			$success = ini_set('memory_limit', -1) !== false;
+			$directoryPath .= DIRECTORY_SEPARATOR;
 		}
 
-		$this->addTaskLog('Memory limit override ' . $success ? 'successful' : 'failed');
-		$this->getMemoryLimit();
-	}
-
-	/**
-	 * Processes the PHP ini memory_limit setting, returning the memory limit in KB
-	 *
-	 * @return float
-	 *
-	 * @since __DEPLOY_VERSION__
-	 */
-	private function getMemoryLimit(): float
-	{
-		$memoryLimit = ini_get('memory_limit');
-
-		if (preg_match('/^(\d+)(.)$/', $memoryLimit, $matches))
+		if (is_dir($directoryPath))
 		{
-			if ($matches[2] == 'M')
+
+			$items = scandir($directoryPath);
+
+			foreach ($items as $item)
 			{
-				// * nnnM -> nnn MB
-				$memoryLimit = $matches[1] * 1024 * 1024;
+
+				if ($item != '.' && $item != '..')
+				{
+
+					$itemPath = $directoryPath . $item;
+
+					if (is_dir($itemPath) && !is_link($itemPath))
+					{
+
+						if (!$this->deleteDirectory($itemPath))
+						{
+
+							return false;
+
+						}
+
+					}
+					else
+					{
+
+						if (!unlink($itemPath))
+						{
+
+							return false;
+
+						}
+
+					}
+				}
+			}
+
+			rmdir($directoryPath);
+
+			return true;
+
+		}
+		else
+		{
+
+			return false;
+		}
+
+	}
+
+	public function initWithParameters($params)
+	{
+
+		// Initializes global variables from command line parameters
+
+		global $directoryPath, $dayCount, $includeDirectories, $debugMode;
+
+		if (!isset($params))
+		{
+
+			// No parameters
+			$this->addTaskLog('No parameters', 'error');
+
+		}
+		else
+		{
+			if (count($params) < 3)
+			{
+
+				// Parameter count mismatch
+				$this->addTaskLog('This script requires at least two parameters. Please specify the directory path followed by the count of days for maximum file age.');
+
 			}
 			else
 			{
-				if ($matches[2] == 'K')
+
+				// Get and validate the first parameter as a directory path
+				$directoryPath = $params->directory;
+				if (!endsWith($directoryPath, '/'))
 				{
-					// * nnnK -> nnn KB
-					$memoryLimit = $matches[1] * 1024;
+					$directoryPath .= DIRECTORY_SEPARATOR;
 				}
+				if (!is_dir($directoryPath))
+				{
+					$this->addTaskLog('No directory found at ' . $directoryPath . '. Please specify a valid directory path as the first parameter.');
+				}
+
+				// Get and validate the second parameter as an integer
+				if ((string) (int) $params->days != $params->days)
+				{
+					$this->addTaskLog('The second parameter is invalid. Please specify an integer for the count of days.');
+				}
+				$dayCount = (int) $params->days;
+
+				// Determine parameter value to include directories or not
+				$includeDirectories = false;
+				if ($params->deletedirectories)
+				{
+					if ($params->deletedirectories == '--delete-directories')
+					{
+						$includeDirectories = true;
+					}
+					else
+					{
+						$this->addTaskLog('Invalid parameter: ' . $params[3]);
+					}
+				}
+
+
+				$debugMode = false;
+				$debugMode = $params->debugMode;
+
+				if ($params->debugMode)
+				{
+					if ($params->debugMode == '1')
+					{
+						$debugMode = true;
+					}
+					else
+					{
+						$debugMode = false;
+					}
+				}
+
+
 			}
 		}
 
-		return (float) $memoryLimit;
+	}
+
+	public function deleteOlderItems()
+	{
+
+		// Scans the directory for older items and deletes them
+
+		global $directoryPath, $dayCount, $includeDirectories, $currentTime;
+
+		$ignoredItems = ['.', '..'];
+
+		$scan = scandir($directoryPath);
+
+		foreach ($scan as $key => $itemName)
+		{
+
+			if (!in_array($itemName, $ignoredItems))
+			{
+
+				$itemPath = $directoryPath . $itemName;
+				$isDirectory = is_dir($itemPath);
+
+				if ($includeDirectories || !$isDirectory)
+				{
+
+					$creationTime = filemtime($itemPath);
+
+					$ageInDays = floor(($currentTime - $creationTime) / 60 / 60 / 24);
+
+					if ($ageInDays >= $dayCount)
+					{
+
+						if ($isDirectory)
+						{
+
+							if ($this->deleteDirectory($itemPath))
+							{
+								$this->addTaskLog('Deleted directory ' . dayCountWithSuffix($ageInDays) . ' old: ' . $itemPath);
+							}
+							else
+							{
+								$this->addTaskLog('Could not delete directory ' . dayCountWithSuffix($ageInDays) . ' old: ' . $itemPath);
+							}
+
+						}
+						else
+						{
+
+							if (unlink($itemPath))
+							{
+								$this->addTaskLog('Deleted file ' . dayCountWithSuffix($ageInDays) . ' old: ' . $itemPath);
+							}
+							else
+							{
+								$this->addTaskLog('Could not delete file ' . dayCountWithSuffix($ageInDays) . ' old: ' . $itemPath);
+							}
+
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
 	}
 }
